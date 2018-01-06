@@ -2,6 +2,7 @@ package org.dyndns.warenix.baby.service;
 
 import android.app.IntentService;
 import android.content.Intent;
+import android.media.MediaPlayer;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
@@ -17,11 +18,36 @@ import java.io.IOException;
 
 public class WebSocketCommandService extends IntentService {
     public static final String TAG = "WebSocketCommandService ";
+
+    private MediaPlayer mp = new MediaPlayer();
+
     private CommandServer.CommandHandler mCommandHandler = new CommandServer.CommandHandler() {
         @Override
         public void handleCommand(AbstractCommand command) {
             if (command instanceof MusicPlayerCommand) {
                 Log.d(TAG, "handle MusicPlayerCommand:" + ((MusicPlayerCommand) command).getCommand());
+
+
+                MusicPlayerCommand musicPlayerCommand = (MusicPlayerCommand) command;
+                try {
+                    switch (musicPlayerCommand.getCommand()) {
+                        case MusicPlayerCommand.COMMAND_PLAY_MUSIC: {
+                            mp.setDataSource("/sdcard/Music/abc-song.mp3");
+                            mp.prepare();
+                            mp.start();
+
+                            break;
+                        }
+                        case MusicPlayerCommand.COMMAND_STOP_MUSIC: {
+                            mp.stop();
+                            mp.reset();
+                            break;
+                        }
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
             }
         }
     };

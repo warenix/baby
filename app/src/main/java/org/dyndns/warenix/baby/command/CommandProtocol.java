@@ -16,7 +16,7 @@ import java.util.Map;
 public class CommandProtocol {
     private static Map<String, Class> sCommandMap = new HashMap();
     protected String type;
-    protected AbstractCommand body;
+    protected Object body;
 
     public CommandProtocol(String type) {
         this.type = type;

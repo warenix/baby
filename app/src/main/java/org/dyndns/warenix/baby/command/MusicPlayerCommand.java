@@ -21,8 +21,7 @@ public class MusicPlayerCommand extends AbstractCommand {
     public static final int COMMAND_STOP_MUSIC = 2;
     public
     static final String TYPE = "MusicPlayer";
-    private @Command
-    int command;
+    private int command;
 
 
     public int getCommand() {
