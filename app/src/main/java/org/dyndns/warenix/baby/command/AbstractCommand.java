@@ -11,4 +11,8 @@ public class AbstractCommand {
     public String toJsonString() {
         return new Gson().toJson(this);
     }
+
+    public String getType() {
+        return null;
+    }
 }

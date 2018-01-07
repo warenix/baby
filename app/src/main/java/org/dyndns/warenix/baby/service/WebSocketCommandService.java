@@ -21,9 +21,15 @@ import android.util.Log;
 import org.dyndns.warenix.baby.R;
 import org.dyndns.warenix.baby.chat.CommandServer;
 import org.dyndns.warenix.baby.command.AbstractCommand;
+import org.dyndns.warenix.baby.command.CommandProtocol;
 import org.dyndns.warenix.baby.command.MusicPlayerCommand;
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.drafts.Draft_6455;
+import org.java_websocket.handshake.ServerHandshake;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 /**
  * Created by warenix on 1/6/18.
@@ -45,6 +51,11 @@ public class WebSocketCommandService extends Service {
                 try {
                     switch (musicPlayerCommand.getCommand()) {
                         case MusicPlayerCommand.COMMAND_PLAY_MUSIC: {
+                            if (mp.isPlaying()) {
+                                mp.stop();
+                                mp.reset();
+                            }
+
                             mp.setDataSource("/sdcard/Music/浪聲.m4a");
                             mp.prepare();
                             mp.start();
@@ -69,6 +80,8 @@ public class WebSocketCommandService extends Service {
 //        super("WebSocketCommandService");
 //    }
     private CommandServer chatServer;
+    private WebSocketClient cc;
+    private boolean mIsPlayingMusicOnRemote;
 
 
 //    @Override
@@ -118,7 +131,7 @@ public class WebSocketCommandService extends Service {
                             new NotificationCompat.MessagingStyle("WebSocket")
                     )
                     .setColor(ContextCompat.getColor(mContext, R.color.colorAccent))
-                    .setSmallIcon(R.drawable.ic_baby_crying)
+                    .setSmallIcon(R.drawable.ic_crying_baby)
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                     .setOnlyAlertOnce(true)
                     //.setContentIntent(createContentIntent())
@@ -190,10 +203,98 @@ public class WebSocketCommandService extends Service {
         stopForeground(true);
     }
 
+    public void connectRemoteServer(String serverIp, final ClientListener listener) throws URISyntaxException {
+        int port = 8765;
+        String fullRemoteUrl = "ws://" + serverIp + ":" + port;
+        Log.d(TAG, "connectRemoteServer()" + fullRemoteUrl);
+
+        cc = new WebSocketClient(new URI(fullRemoteUrl), new Draft_6455()) {
+
+            @Override
+            public void onMessage(String message) {
+                Log.d(TAG, "cc.onMessage()" + message);
+                if (listener != null) {
+                    listener.onMessage(message);
+                }
+            }
+
+            @Override
+            public void onOpen(ServerHandshake handshake) {
+                Log.d(TAG, "cc.onOpen() connected to remote server:" + getURI());
+                if (listener != null) {
+                    listener.onOpen(handshake);
+                }
+//                ta.append( "You are connected to ChatServer: " + getURI() + "\n" );
+//                ta.setCaretPosition( ta.getDocument().getLength() );
+            }
+
+            @Override
+            public void onClose(int code, String reason, boolean remote) {
+//                ta.append( "You have been disconnected from: " + getURI() + "; Code: " + code + " " + reason + "\n" );
+                Log.d(TAG, "onClose() disconnected from: " + getURI() + getURI() + "; Code: " + code + " " + reason);
+                if (listener != null) {
+                    listener.onClose(code, reason, remote);
+                }
+            }
+
+            @Override
+            public void onError(Exception ex) {
+//                ta.append( "Exception occured ...\n" + ex + "\n" );
+                ex.printStackTrace();
+                if (listener != null) {
+                    listener.onError(ex);
+                }
+            }
+        };
+
+        cc.connect();
+    }
+
+    public void disconnectRemoteServer() {
+        if (cc != null && cc.isOpen()) {
+            cc.close();
+        }
+    }
+
+    public boolean isPlayingMusicOnRemote() {
+        return mIsPlayingMusicOnRemote;
+    }
+
+    public void playMusicOnRemote() {
+        MusicPlayerCommand command = new MusicPlayerCommand();
+        command.setCommand(MusicPlayerCommand.COMMAND_PLAY_MUSIC);
+
+        CommandProtocol commandProtocol = new CommandProtocol(command);
+        cc.send(commandProtocol.toJsonString());
+
+        mIsPlayingMusicOnRemote = true;
+    }
+
+    public void stopMusicOnRemote() {
+        MusicPlayerCommand command = new MusicPlayerCommand();
+        command.setCommand(MusicPlayerCommand.COMMAND_STOP_MUSIC);
+
+        CommandProtocol commandProtocol = new CommandProtocol(command);
+        cc.send(commandProtocol.toJsonString());
+
+        mIsPlayingMusicOnRemote = false;
+    }
+
+    public interface ClientListener {
+        void onOpen(ServerHandshake handshake);
+
+        void onClose(int code, String reason, boolean remote);
+
+        void onError(Exception ex);
+
+        void onMessage(String message);
+    }
+
     //binder
     public class WebSocketCommandBinder extends Binder {
         public WebSocketCommandService getService() {
             return WebSocketCommandService.this;
         }
     }
+
 }

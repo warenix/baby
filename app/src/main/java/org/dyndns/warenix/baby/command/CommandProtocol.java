@@ -18,8 +18,9 @@ public class CommandProtocol {
     protected String type;
     protected Object body;
 
-    public CommandProtocol(String type) {
-        this.type = type;
+    public CommandProtocol(AbstractCommand command) {
+        this.type = command.getType();
+        body = command;
     }
 
     public static void registerCommand(@NonNull String key, @NonNull Class cls) {

@@ -17,4 +17,7 @@ public class HelloCommand extends AbstractCommand {
         return message.equals(((HelloCommand) obj).message);
     }
 
+    public String getType() {
+        return TYPE;
+    }
 }

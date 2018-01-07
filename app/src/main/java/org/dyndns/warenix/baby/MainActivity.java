@@ -9,10 +9,15 @@ import android.os.IBinder;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.TextView;
 
 import org.dyndns.warenix.baby.service.FCMCommandService;
 import org.dyndns.warenix.baby.service.WebSocketCommandService;
+import org.java_websocket.handshake.ServerHandshake;
 
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
@@ -43,13 +48,109 @@ public class MainActivity extends AppCompatActivity {
         }
     };
     private Intent playIntent;
+    private Button mConnectRemoteServerButton;
+    private TextView mRemoteServerConnectionStatusText;
+    // ViewModel
+    private boolean mIsConnectedRemoteConnection;
+    private WebSocketCommandService.ClientListener mRemoteServerListener = new WebSocketCommandService.ClientListener() {
+        @Override
+        public void onOpen(ServerHandshake handshake) {
+            mIsConnectedRemoteConnection = true;
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    onConnectedRemoteConnectionChanged();
+                }
+            });
+        }
+
+        @Override
+        public void onClose(int code, String reason, boolean remote) {
+            mIsConnectedRemoteConnection = false;
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    onConnectedRemoteConnectionChanged();
+                }
+            });
+        }
+
+        @Override
+        public void onError(Exception ex) {
+
+        }
+
+        @Override
+        public void onMessage(String message) {
+
+        }
+    };
+    private Button mToggleMusicBtn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        setupUI();
         setupCommandService();
+
+        // restore state
+        onConnectedRemoteConnectionChanged();
+    }
+
+    private void setupUI() {
+        final TextView serverIpText = findViewById(R.id.txt_serverip);
+        mConnectRemoteServerButton = findViewById(R.id.btn_connect);
+        mConnectRemoteServerButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (mIsConnectedRemoteConnection) {
+                    // disconnect
+                    musicSrv.disconnectRemoteServer();
+                } else {
+                    // connect
+                    String serverIp = serverIpText.getText().toString().trim();
+                    try {
+                        musicSrv.connectRemoteServer(serverIp, mRemoteServerListener);
+                    } catch (URISyntaxException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+            }
+        });
+
+        mToggleMusicBtn = findViewById(R.id.btn_togglemusic);
+        mToggleMusicBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+
+                if (musicSrv.isPlayingMusicOnRemote()) {
+                    musicSrv.stopMusicOnRemote();
+                } else {
+                    musicSrv.playMusicOnRemote();
+                }
+
+                updateViewPlayMusicOnRemote();
+            }
+        });
+
+        mRemoteServerConnectionStatusText = findViewById(R.id.txt_remoteconnectionstatus);
+    }
+
+    private void updateViewPlayMusicOnRemote() {
+        mToggleMusicBtn.setText(musicSrv.isPlayingMusicOnRemote() ? "Stop" : "Play");
+    }
+
+    private void updateRemoteServerConnectionStatusText() {
+        mRemoteServerConnectionStatusText.setText(mIsConnectedRemoteConnection ? "Connected" : "Idle");
+        mConnectRemoteServerButton.setText(mIsConnectedRemoteConnection ? "Disconnect" : "Connect");
+    }
+
+    private void onConnectedRemoteConnectionChanged() {
+        updateRemoteServerConnectionStatusText();
     }
 
     @Override

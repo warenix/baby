@@ -32,6 +32,11 @@ public class MusicPlayerCommand extends AbstractCommand {
         this.command = command;
     }
 
+    @Override
+    public String getType() {
+        return TYPE;
+    }
+
     @Retention(SOURCE)
     @IntDef({COMMAND_PLAY_MUSIC, COMMAND_STOP_MUSIC})
     public @interface Command {
